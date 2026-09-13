@@ -24,14 +24,31 @@ from googleapiclient.http import MediaFileUpload
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-BASE = Path.cwd() if getattr(sys, "frozen", False) else Path(__file__).parent
-for _line in (BASE / ".env").read_text().splitlines() if (BASE / ".env").exists() else []:
+if getattr(sys, "frozen", False):
+    EXE_DIR = Path(sys.executable).parent
+    # ponytail: frozen apps must never write into the install dir (Program Files is read-only)
+    BASE = Path(os.environ.get("APPDATA") or Path.home()) / "YTAutoStudio"
+    BASE.mkdir(parents=True, exist_ok=True)
+else:
+    BASE = Path(__file__).parent
+    EXE_DIR = BASE
+
+
+def _find(name: str) -> Path:
+    """Search writable data dir first, then next to the frozen exe."""
+    for p in (BASE / name, EXE_DIR / name, EXE_DIR.parent / name):
+        if p.exists():
+            return p
+    return BASE / name
+
+
+for _line in (_find(".env").read_text().splitlines() if _find(".env").exists() else []):
     if "=" in _line and not _line.startswith("#"):
         _k, _v = _line.split("=", 1)
         os.environ.setdefault(_k.strip(), _v.strip())
 TOKENS_DIR = BASE / "tokens"
 LOG_FILE = BASE / "uploads_log.json"
-CLIENT_SECRET = BASE / "client_secret.json"
+CLIENT_SECRET = _find("client_secret.json")
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload",
           "https://www.googleapis.com/auth/youtube.readonly",
           "https://www.googleapis.com/auth/yt-analytics.readonly"]
@@ -982,10 +999,13 @@ def _background_scheduler_worker():
 threading.Thread(target=_background_scheduler_worker, daemon=True).start()
 
 
-if (BASE / "web" / "dist").exists():
-    app.mount("/dashboard", StaticFiles(directory=str(BASE / "web" / "dist", ), html=True), name="dashboard")
+for _dist in (BASE / "web" / "dist", EXE_DIR.parent / "web" / "dist", EXE_DIR / "web" / "dist"):
+    if _dist.exists():
+        app.mount("/dashboard", StaticFiles(directory=str(_dist), html=True), name="dashboard")
+        break
+(BASE / "avatars").mkdir(exist_ok=True)
 app.mount("/avatars", StaticFiles(directory=str(BASE / "avatars")), name="avatars")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("YT_AUTO_PORT", "8000")))

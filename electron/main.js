@@ -3,13 +3,33 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
+const net = require("net");
 
 const ROOT = path.join(__dirname, "..");
-const PORT = 8000;
+let PORT = 8000;
 let win = null;
 let tray = null;
 let backend = null;
 let backendReady = false;
+
+const LOG_DIR = path.join(app.getPath("appData"), "YTAutoStudio");
+const LOG_FILE = path.join(LOG_DIR, "backend.log");
+function blog(line) {
+  try { fs.mkdirSync(LOG_DIR, { recursive: true }); fs.appendFileSync(LOG_FILE, line); } catch {}
+}
+
+function portFree(p) {
+  return new Promise((resolve) => {
+    const s = net.connect(p, "127.0.0.1");
+    s.once("connect", () => { s.destroy(); resolve(false); });
+    s.once("error", () => resolve(true));
+  });
+}
+async function pickPort() {
+  if (await portFree(8000)) return 8000;
+  for (let p = 8010; p < 8021; p++) if (await portFree(p)) return p;
+  return 8000;
+}
 
 function startBackend() {
   const isWin = process.platform === "win32";
@@ -22,17 +42,19 @@ function startBackend() {
   const cmd = usePython ? py : bin;
   const args = usePython ? ["app.py"] : [];
   console.log(`starting backend: ${cmd} ${args.join(" ")}`);
+  blog(`\n==== ${new Date().toISOString()} spawning: ${cmd} ${args.join(" ")} (port ${PORT}) ====\n`);
   backend = spawn(cmd, args, {
     cwd: ROOT,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env },
+    env: { ...process.env, YT_AUTO_PORT: String(PORT) },
     shell: isWin,
   });
-  backend.stdout.on("data", (d) => process.stdout.write(`[py] ${d}`));
-  backend.stderr.on("data", (d) => process.stderr.write(`[py] ${d}`));
-  backend.on("error", (e) => console.error(`backend spawn error: ${e}`));
+  backend.stdout.on("data", (d) => { process.stdout.write(`[py] ${d}`); blog(d); });
+  backend.stderr.on("data", (d) => { process.stderr.write(`[py] ${d}`); blog(d); });
+  backend.on("error", (e) => { console.error(`backend spawn error: ${e}`); blog(`spawn error: ${e}\n`); });
   backend.on("exit", (code) => {
     console.log(`backend exited (${code})`);
+    blog(`backend exited (${code})\n`);
     if (!app.isQuitting && !backendReady) {
       setTimeout(() => { if (!app.isQuitting) startBackend(); }, 1500);
     }
@@ -198,6 +220,7 @@ app.whenReady().then(async () => {
   try {
     setupAppMenu();
     app.setLoginItemSettings({ openAtLogin: true });   // auto-start after reboot
+    PORT = await pickPort();
     const isUp = await ping();
     if (!isUp) {
       startBackend();
@@ -207,7 +230,12 @@ app.whenReady().then(async () => {
     const ok = await waitBackend();
     createWindow();
     if (!ok) {
-      win.loadURL("data:text/html,<h2 style='font-family:sans-serif;padding:40px'>Backend failed to start — check the terminal log</h2>");
+      let tail = "";
+      try { tail = fs.readFileSync(LOG_FILE, "utf8").slice(-4000); } catch {}
+      const esc = tail.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      win.loadURL("data:text/html,<h2 style='font-family:sans-serif;padding:20px'>Backend failed to start</h2>"
+        + `<p style='font-family:monospace;padding:0 20px'>Full log: ${LOG_FILE}</p>`
+        + `<pre style='background:#111;color:#eee;padding:20px;margin:20px;overflow:auto;max-height:60vh;font-size:12px'>${esc || "(log is empty)"}</pre>`);
       return;
     }
     createTray();
