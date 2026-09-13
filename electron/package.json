@@ -1,0 +1,69 @@
+{
+  "name": "yt-auto-studio",
+  "version": "1.0.0",
+  "description": "YT Auto Studio — Multi-channel YouTube automation",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build-backend": "cd .. && .venv\\Scripts\\pip install -q pyinstaller && .venv\\Scripts\\pyinstaller --onefile --name yt-auto-backend --distpath dist-backend app.py",
+    "dist": "electron-builder --win",
+    "dist-portable": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.ytauto.studio",
+    "productName": "YT Auto Studio",
+    "directories": {
+      "output": "../release"
+    },
+    "files": [
+      "main.js",
+      "icon.png",
+      "icon@2x.png"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist-backend",
+        "to": "dist-backend",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../web/dist",
+        "to": "web/dist",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../.env",
+        "to": ".env"
+      },
+      {
+        "from": "../SETUP.md",
+        "to": "SETUP.md"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.png",
+      "artifactName": "YT-Auto-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "YT Auto Studio"
+    },
+    "portable": {
+      "artifactName": "YT-Auto-Portable.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}

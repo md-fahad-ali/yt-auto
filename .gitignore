@@ -1,0 +1,35 @@
+# --- secrets (never commit) ---
+.env
+client_secret.json
+*.db
+*.db-shm
+*.db-wal
+tokens/
+uploads_log.json
+avatars/
+
+# --- logs ---
+*.log
+
+# --- python ---
+__pycache__/
+.venv/
+build_temp/
+
+# --- node ---
+node_modules/
+
+# --- build artifacts ---
+build/
+dist-backend/
+release/
+
+# --- test videos / scratch ---
+test1/
+test2/
+test1 copy/
+test2 copy/
+.playwright-mcp/
+
+# --- os ---
+.DS_Store
