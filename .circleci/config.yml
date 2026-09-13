@@ -1,0 +1,66 @@
+version: 2.1
+
+jobs:
+  build-exe:
+    machine:
+      image: windows-server-2022-gui:current
+      resource_class: windows.medium
+    steps:
+      - checkout
+
+      - run:
+          name: Install Python + Node.js
+          shell: powershell.exe -ExecutionPolicy Bypass
+          command: |
+            choco install -y python312 nodejs
+            refreshenv
+
+      - run:
+          name: Install dependencies
+          shell: powershell.exe -ExecutionPolicy Bypass
+          command: |
+            $env:PATH = "C:\Python312;C:\Python312\Scripts;C:\Program Files\nodejs;$env:PATH"
+            pip install -r requirements.txt pyinstaller
+            npm install -g pnpm
+
+      - run:
+          name: Build React dashboard
+          shell: powershell.exe -ExecutionPolicy Bypass
+          command: |
+            $env:PATH = "C:\Program Files\nodejs;$env:PATH"
+            cd web
+            pnpm install
+            pnpm run build
+            cd ..
+
+      - run:
+          name: Freeze backend (PyInstaller)
+          shell: powershell.exe -ExecutionPolicy Bypass
+          command: |
+            $env:PATH = "C:\Python312;C:\Python312\Scripts;$env:PATH"
+            pyinstaller --onefile --name yt-auto-backend --distpath dist-backend --specpath build_temp --exclude-module tkinter --exclude-module matplotlib --exclude-module numpy app.py
+
+      - run:
+          name: Create .env placeholder
+          shell: powershell.exe -ExecutionPolicy Bypass
+          command: |
+            if (-not (Test-Path .env)) { Set-Content -Path .env -Value "OPENROUTER_API_KEY=placeholder-set-in-circleci-project-env" }
+
+      - run:
+          name: Build Windows installer
+          shell: powershell.exe -ExecutionPolicy Bypass
+          command: |
+            $env:PATH = "C:\Program Files\nodejs;$env:PATH"
+            cd electron
+            pnpm install
+            npx electron-builder --win --x64
+            cd ..
+
+      - store_artifacts:
+          path: release
+          destination: exe
+
+workflows:
+  build:
+    jobs:
+      - build-exe
