@@ -4,11 +4,12 @@ Replaces tokens/*.json — all channel logins live in the channel_auth table.
 The .db file is now a secret (like .env): never commit or share it.
 """
 import json
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-BASE = Path(__file__).parent
+BASE = Path(os.environ["YT_AUTO_DATA"]) if os.environ.get("YT_AUTO_DATA") else Path(__file__).parent
 DB = BASE / "batch.db"
 
 

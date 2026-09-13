@@ -12,6 +12,7 @@ Commands:
   compare <topic>    live engine vs index engine, side-by-side + overlap %
 """
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -23,7 +24,7 @@ from pathlib import Path
 
 from research import search_recent, video_stats, autocomplete
 
-BASE = Path(__file__).parent
+BASE = Path(os.environ["YT_AUTO_DATA"]) if os.environ.get("YT_AUTO_DATA") else Path(__file__).parent
 DB = BASE / "index.db"
 NS = {"yt": "http://www.youtube.com/xml/schemas/2015", "a": "http://www.w3.org/2005/Atom"}
 

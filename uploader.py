@@ -23,7 +23,7 @@ from pathlib import Path
 
 from research import canonical_topic, video_stats, autocomplete, yt
 
-BASE = Path(__file__).parent
+BASE = Path(os.environ["YT_AUTO_DATA"]) if os.environ.get("YT_AUTO_DATA") else Path(__file__).parent
 DB = BASE / "batch.db"
 VIDEO_EXT = (".mp4", ".mov", ".webm", ".avi", ".mkv")
 SMALL = {"of", "the", "in", "and", "to", "a", "an", "for", "at", "on", "with", "my"}

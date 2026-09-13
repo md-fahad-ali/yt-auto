@@ -29,6 +29,7 @@ if getattr(sys, "frozen", False):
     # ponytail: frozen apps must never write into the install dir (Program Files is read-only)
     BASE = Path(os.environ.get("APPDATA") or Path.home()) / "YTAutoStudio"
     BASE.mkdir(parents=True, exist_ok=True)
+    os.environ["YT_AUTO_DATA"] = str(BASE)
 else:
     BASE = Path(__file__).parent
     EXE_DIR = BASE

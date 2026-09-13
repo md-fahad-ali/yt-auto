@@ -11,6 +11,7 @@ Commands:
   retention <video_id>       average % watched + avg view duration
 """
 import json
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -20,7 +21,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-BASE = Path(__file__).parent
+BASE = Path(os.environ["YT_AUTO_DATA"]) if os.environ.get("YT_AUTO_DATA") else Path(__file__).parent
 SCOPES = ["https://www.googleapis.com/auth/youtube.readonly",
           "https://www.googleapis.com/auth/yt-analytics.readonly"]
 
