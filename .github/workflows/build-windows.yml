@@ -1,0 +1,60 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Build React dashboard
+        working-directory: web
+        run: |
+          pnpm install
+          pnpm run build
+
+      - name: Freeze backend (PyInstaller)
+        run: pyinstaller --onefile --name yt-auto-backend --distpath dist-backend --specpath build_temp --exclude-module tkinter --exclude-module matplotlib --exclude-module numpy app.py
+
+      - name: Create .env for packaging
+        shell: bash
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: |
+          if [ -n "$ENV_FILE" ]; then
+            printf '%s' "$ENV_FILE" > .env
+          else
+            echo "OPENROUTER_API_KEY=placeholder-set-ENV_FILE-secret" > .env
+          fi
+
+      - name: Build Windows installer
+        working-directory: electron
+        run: |
+          pnpm install
+          npx electron-builder --win
+
+      - name: Upload EXEs
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: |
+            release/*.exe
+          if-no-files-found: error
