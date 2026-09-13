@@ -31,7 +31,17 @@ if %errorlevel% neq 0 (
     echo ERROR: Node.js not found. Install from https://nodejs.org
     pause & exit /b 1
 )
-echo OK: Python and Node.js found.
+where pnpm >nul 2>&1
+if %errorlevel% neq 0 (
+    echo pnpm not found - installing it now...
+    call npm install -g pnpm
+)
+where pnpm >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ERROR: pnpm could not be installed automatically. Run: npm install -g pnpm
+    pause & exit /b 1
+)
+echo OK: Python, Node.js, and pnpm found.
 
 echo.
 echo [2/5] Creating Python virtual environment...
